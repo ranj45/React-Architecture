@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>React Architecture Mindmap</title>
+<style>
+ @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+ :root {
+ --bg: #0a0a0f;
+ --surface: #111118;
+ --border: #1e1e2e;
+ --accent1: #00ff94;
+ --accent2: #7c5cfc;
+ --accent3: #ff6b6b;
+ --accent4: #ffd93d;
+ --accent5: #4ecdc4;
+ --text: #e8e8f0;
+ --muted: #6b6b80;
+ --card: #16161f;
+ }
+
+ * { margin: 0; padding: 0; box-sizing: border-box; }
+
+ body {
+ background: var(--bg);
+ color: var(--text);
+ font-family: 'Syne', sans-serif;
+ min-height: 100vh;
+ overflow-x: hidden;
+ }
+
+ /* NOISE TEXTURE OVERLAY */
+ body::before {
+ content: '';
+ position: fixed;
+ inset: 0;
+ background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+ pointer-events: none;
+ z-index: 0;
+ opacity: 0.5;
+ }
+
+ .container {
+ max-width: 1400px;
+ margin: 0 auto;
+ padding: 40px 24px;
+ position: relative;
+ z-index: 1;
+ }
+
+ /* HEADER */
+ .header {
+ text-align: center;
+ margin-bottom: 60px;
+ animation: fadeDown 0.8s ease forwards;
+ }
+
+ .header-tag {
+ display: inline-block;
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ color: var(--accent1);
+ letter-spacing: 3px;
+ text-transform: uppercase;
+ border: 1px solid var(--accent1);
+ padding: 4px 14px;
+ margin-bottom: 20px;
+ opacity: 0.8;
+ }
+
+ .header h1 {
+ font-size: clamp(32px, 6vw, 72px);
+ font-weight: 800;
+ line-height: 1;
+ background: linear-gradient(135deg, #fff 0%, var(--accent1) 50%, var(--accent2) 100%);
+ -webkit-background-clip: text;
+ -webkit-text-fill-color: transparent;
+ background-clip: text;
+ margin-bottom: 16px;
+ }
+
+ .header p {
+ color: var(--muted);
+ font-size: 16px;
+ font-family: 'JetBrains Mono', monospace;
+ }
+
+ /* TAB NAVIGATION */
+ .tabs {
+ display: flex;
+ gap: 4px;
+ margin-bottom: 40px;
+ background: var(--surface);
+ border: 1px solid var(--border);
+ border-radius: 12px;
+ padding: 6px;
+ flex-wrap: wrap;
+ }
+
+ .tab {
+ flex: 1;
+ min-width: 120px;
+ padding: 10px 16px;
+ border: none;
+ background: transparent;
+ color: var(--muted);
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 12px;
+ cursor: pointer;
+ border-radius: 8px;
+ transition: all 0.2s;
+ white-space: nowrap;
+ text-align: center;
+ }
+
+ .tab:hover { color: var(--text); background: var(--border); }
+ .tab.active { background: var(--accent2); color: #fff; font-weight: 600; }
+
+ /* VIEWS */
+ .view { display: none; animation: fadeIn 0.4s ease; }
+ .view.active { display: block; }
+
+ @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+ @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+ /* MINDMAP SVG VIEW */
+ .mindmap-container {
+ background: var(--surface);
+ border: 1px solid var(--border);
+ border-radius: 16px;
+ overflow: auto;
+ position: relative;
+ }
+
+ .mindmap-container svg {
+ display: block;
+ min-width: 100%;
+ }
+
+ /* FILE STRUCTURE GRID */
+ .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+ .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; }
+
+ .card {
+ background: var(--card);
+ border: 1px solid var(--border);
+ border-radius: 12px;
+ padding: 24px;
+ position: relative;
+ overflow: hidden;
+ transition: border-color 0.3s, transform 0.2s;
+ cursor: pointer;
+ }
+
+ .card::before {
+ content: '';
+ position: absolute;
+ top: 0; left: 0; right: 0;
+ height: 2px;
+ }
+
+ .card:hover { transform: translateY(-2px); }
+
+ .card.green::before { background: var(--accent1); }
+ .card.purple::before { background: var(--accent2); }
+ .card.red::before { background: var(--accent3); }
+ .card.yellow::before { background: var(--accent4); }
+ .card.teal::before { background: var(--accent5); }
+
+ .card:hover.green { border-color: var(--accent1); }
+ .card:hover.purple { border-color: var(--accent2); }
+ .card:hover.red { border-color: var(--accent3); }
+ .card:hover.yellow { border-color: var(--accent4); }
+ .card:hover.teal { border-color: var(--accent5); }
+
+ .card-icon {
+ width: 40px; height: 40px;
+ border-radius: 10px;
+ display: flex; align-items: center; justify-content: center;
+ font-size: 20px;
+ margin-bottom: 16px;
+ }
+
+ .card-icon.green { background: rgba(0,255,148,0.1); }
+ .card-icon.purple { background: rgba(124,92,252,0.1); }
+ .card-icon.red { background: rgba(255,107,107,0.1); }
+ .card-icon.yellow { background: rgba(255,217,61,0.1); }
+ .card-icon.teal { background: rgba(78,205,196,0.1); }
+
+ .card h3 {
+ font-size: 16px;
+ font-weight: 700;
+ margin-bottom: 8px;
+ display: flex; align-items: center; gap: 8px;
+ }
+
+ .file-badge {
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 10px;
+ padding: 2px 8px;
+ border-radius: 4px;
+ font-weight: 400;
+ }
+
+ .file-badge.green { background: rgba(0,255,148,0.15); color: var(--accent1); }
+ .file-badge.purple { background: rgba(124,92,252,0.15); color: var(--accent2); }
+ .file-badge.red { background: rgba(255,107,107,0.15); color: var(--accent3); }
+ .file-badge.yellow { background: rgba(255,217,61,0.15); color: var(--accent4); }
+ .file-badge.teal { background: rgba(78,205,196,0.15); color: var(--accent5); }
+
+ .card p {
+ color: var(--muted);
+ font-size: 13px;
+ line-height: 1.6;
+ margin-bottom: 16px;
+ }
+
+ .code-block {
+ background: var(--bg);
+ border: 1px solid var(--border);
+ border-radius: 8px;
+ padding: 12px;
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ color: #a8a8c0;
+ white-space: pre;
+ overflow-x: auto;
+ line-height: 1.7;
+ }
+
+ .code-block .c-green { color: var(--accent1); }
+ .code-block .c-purple { color: var(--accent2); }
+ .code-block .c-yellow { color: var(--accent4); }
+ .code-block .c-red { color: var(--accent3); }
+ .code-block .c-teal { color: var(--accent5); }
+ .code-block .c-muted { color: #555568; }
+
+ .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+ .tag {
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 10px;
+ padding: 3px 8px;
+ border-radius: 4px;
+ background: var(--border);
+ color: var(--muted);
+ }
+
+ /* CHANGE SCENARIOS */
+ .scenario-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+ .scenario {
+ background: var(--card);
+ border: 1px solid var(--border);
+ border-radius: 12px;
+ overflow: hidden;
+ transition: all 0.3s;
+ }
+
+ .scenario-header {
+ display: flex;
+ align-items: center;
+ gap: 16px;
+ padding: 20px 24px;
+ cursor: pointer;
+ user-select: none;
+ }
+
+ .scenario-header:hover { background: rgba(255,255,255,0.02); }
+
+ .scenario-num {
+ width: 32px; height: 32px;
+ border-radius: 8px;
+ display: flex; align-items: center; justify-content: center;
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 12px;
+ font-weight: 700;
+ flex-shrink: 0;
+ }
+
+ .scenario-title { flex: 1; font-size: 15px; font-weight: 700; }
+ .scenario-subtitle { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+ .scenario-arrow {
+ color: var(--muted);
+ font-size: 18px;
+ transition: transform 0.3s;
+ }
+
+ .scenario.open .scenario-arrow { transform: rotate(180deg); }
+
+ .scenario-body {
+ display: none;
+ padding: 0 24px 24px;
+ border-top: 1px solid var(--border);
+ }
+
+ .scenario.open .scenario-body { display: block; }
+
+ .change-files {
+ display: grid;
+ grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+ gap: 8px;
+ margin: 16px 0;
+ }
+
+ .change-file {
+ background: var(--bg);
+ border-radius: 8px;
+ padding: 10px 14px;
+ border-left: 3px solid;
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ }
+
+ .change-file span { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+ .step-list { counter-reset: steps; }
+ .step {
+ counter-increment: steps;
+ display: flex;
+ gap: 12px;
+ margin: 10px 0;
+ font-size: 13px;
+ color: var(--muted);
+ line-height: 1.6;
+ }
+
+ .step::before {
+ content: counter(steps);
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ width: 22px;
+ height: 22px;
+ border-radius: 50%;
+ background: var(--border);
+ color: var(--text);
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 10px;
+ font-weight: 700;
+ flex-shrink: 0;
+ margin-top: 1px;
+ }
+
+ .step strong { color: var(--text); }
+
+ /* FLOW DIAGRAM */
+ .flow-wrap {
+ background: var(--surface);
+ border: 1px solid var(--border);
+ border-radius: 16px;
+ padding: 32px;
+ overflow-x: auto;
+ }
+
+ .flow {
+ display: flex;
+ align-items: center;
+ gap: 0;
+ flex-wrap: nowrap;
+ min-width: max-content;
+ justify-content: center;
+ }
+
+ .flow-node {
+ background: var(--card);
+ border: 1px solid var(--border);
+ border-radius: 10px;
+ padding: 14px 20px;
+ text-align: center;
+ min-width: 120px;
+ transition: all 0.3s;
+ }
+
+ .flow-node:hover { transform: scale(1.05); }
+
+ .flow-node .fn-icon { font-size: 24px; margin-bottom: 6px; }
+ .flow-node .fn-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent1); font-weight: 700; }
+ .flow-node .fn-desc { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+ .flow-arrow {
+ font-size: 20px;
+ color: var(--muted);
+ padding: 0 8px;
+ flex-shrink: 0;
+ }
+
+ .section-label {
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ color: var(--accent1);
+ letter-spacing: 2px;
+ text-transform: uppercase;
+ margin: 32px 0 16px;
+ opacity: 0.7;
+ }
+
+ /* LEGEND */
+ .legend {
+ display: flex;
+ gap: 20px;
+ flex-wrap: wrap;
+ margin-bottom: 24px;
+ padding: 16px;
+ background: var(--surface);
+ border-radius: 10px;
+ border: 1px solid var(--border);
+ }
+
+ .legend-item {
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ font-size: 12px;
+ color: var(--muted);
+ font-family: 'JetBrains Mono', monospace;
+ }
+
+ .legend-dot {
+ width: 10px; height: 10px;
+ border-radius: 50%;
+ }
+
+ .scroll-hint {
+ text-align: center;
+ color: var(--muted);
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ margin-top: 12px;
+ }
+
+ /* Responsive */
+ @media (max-width: 600px) {
+ .tabs { gap: 4px; }
+ .tab { font-size: 10px; padding: 8px 10px; }
+ .grid-3, .grid-2 { grid-template-columns: 1fr; }
+ }
+</style>
+</head>
+<body>
+<div class="container">
+
+ <!-- HEADER -->
+ <div class="header">
+ <div class="header-tag">Complete Guide</div>
+ <h1>React Architecture<br>Mindmap</h1>
+ <p>// files · env · vite · change scenarios · data flow</p>
+ </div>
+
+ <!-- TABS -->
+ <div class="tabs">
+ <button class="tab active" onclick="switchTab('flow')">⚡ Data Flow</button>
+ <button class="tab" onclick="switchTab('files')">📁 File Guide</button>
+ <button class="tab" onclick="switchTab('env')">🌍 .env Guide</button>
+ <button class="tab" onclick="switchTab('vite')">⚙️ Vite Config</button>
+ <button class="tab" onclick="switchTab('scenarios')">🔄 Change Scenarios</button>
+ <button class="tab" onclick="switchTab('checklist')">✅ Change Checklist</button>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <!-- TAB: DATA FLOW -->
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <div class="view active" id="view-flow">
+
+ <p class="section-label">// How Everything Connects</p>
+
+ <div class="flow-wrap">
+ <div class="flow">
+ <div class="flow-node">
+ <div class="fn-icon">📄</div>
+ <div class="fn-name">index.html</div>
+ <div class="fn-desc">Entry point<br>#root div</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">🚀</div>
+ <div class="fn-name">main.jsx</div>
+ <div class="fn-desc">Boots React<br>Mounts providers</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">🗺️</div>
+ <div class="fn-name">App.jsx</div>
+ <div class="fn-desc">Router hub<br>Route defs</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">📑</div>
+ <div class="fn-name">pages/</div>
+ <div class="fn-desc">Route views<br>Compose UI</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">🧩</div>
+ <div class="fn-name">components/</div>
+ <div class="fn-desc">Reusable UI<br>Dumb pieces</div>
+ </div>
+ </div>
+ <br>
+ <div class="flow" style="justify-content:center">
+ <div class="flow-node">
+ <div class="fn-icon">🌍</div>
+ <div class="fn-name">.env files</div>
+ <div class="fn-desc">Secrets & config<br>per environment</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">⚙️</div>
+ <div class="fn-name">vite.config.js</div>
+ <div class="fn-desc">Build brain<br>proxy, alias, plugins</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">🔌</div>
+ <div class="fn-name">services/</div>
+ <div class="fn-desc">API calls<br>uses VITE_ vars</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">🎣</div>
+ <div class="fn-name">hooks/</div>
+ <div class="fn-desc">Data fetching<br>State logic</div>
+ </div>
+ <div class="flow-arrow">→</div>
+ <div class="flow-node">
+ <div class="fn-icon">🗃️</div>
+ <div class="fn-name">store/</div>
+ <div class="fn-desc">Global state<br>Redux/Zustand</div>
+ </div>
+ </div>
+ </div>
+
+ <p class="section-label">// Layer Responsibilities</p>
+
+ <div class="grid-3">
+ <div class="card green">
+ <div class="card-icon green">🏗️</div>
+ <h3>Config Layer <span class="file-badge green">bottom</span></h3>
+ <p>Controls how your app is built and run. Everything else depends on this layer.</p>
+ <div class="code-block"><span class="c-green">vite.config.js</span> → build settings, proxy, aliases
+<span class="c-green">.env.*</span> → environment variables
+<span class="c-green">package.json</span> → scripts, dependencies
+<span class="c-green">index.html</span> → HTML shell, title, meta tags</div>
+ <div class="tags"><span class="tag">changed rarely</span><span class="tag">affects everything</span></div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">⚡</div>
+ <h3>Boot Layer <span class="file-badge purple">app start</span></h3>
+ <p>Runs once at startup. Sets up providers, global state, routing.</p>
+ <div class="code-block"><span class="c-purple">main.jsx</span> → ReactDOM.createRoot
+ → wraps with &lt;BrowserRouter&gt;
+ → wraps with &lt;Provider store&gt;
+ → wraps with &lt;AuthProvider&gt;
+
+<span class="c-purple">App.jsx</span> → defines all routes
+ → handles layouts</div>
+ <div class="tags"><span class="tag">setup once</span><span class="tag">providers here</span></div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">🔌</div>
+ <h3>Data Layer <span class="file-badge teal">services</span></h3>
+ <p>All external communication. Components never call fetch() directly.</p>
+ <div class="code-block"><span class="c-teal">services/api.js</span> → axios base config
+<span class="c-teal">services/auth.js</span> → login, logout, tokens
+<span class="c-teal">services/users.js</span> → user CRUD calls
+
+<span class="c-muted">// Uses:</span>
+import.meta.env.<span class="c-green">VITE_API_URL</span></div>
+ <div class="tags"><span class="tag">no UI here</span><span class="tag">pure functions</span></div>
+ </div>
+
+ <div class="card yellow">
+ <div class="card-icon yellow">🎣</div>
+ <h3>Logic Layer <span class="file-badge yellow">hooks</span></h3>
+ <p>Custom hooks bridge data layer to UI. Reusable stateful logic.</p>
+ <div class="code-block"><span class="c-yellow">hooks/useAuth.js</span> → auth state + methods
+<span class="c-yellow">hooks/useFetch.js</span> → generic data fetcher
+<span class="c-yellow">hooks/useForm.js</span> → form state + validation
+<span class="c-yellow">hooks/useLocalStorage</span> → persist state
+
+<span class="c-muted">// Calls services, returns state to components</span></div>
+ <div class="tags"><span class="tag">no JSX</span><span class="tag">reusable</span></div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">📑</div>
+ <h3>Page Layer <span class="file-badge red">pages/</span></h3>
+ <p>Route-level components. Compose smaller pieces. One page per route.</p>
+ <div class="code-block"><span class="c-red">pages/Home/index.jsx</span>
+<span class="c-red">pages/Dashboard/index.jsx</span>
+<span class="c-red">pages/Profile/index.jsx</span>
+
+<span class="c-muted">// Pages:
+// - Use hooks for data
+// - Compose components
+// - Handle loading/error states
+// - NO direct API calls</span></div>
+ <div class="tags"><span class="tag">tied to routes</span><span class="tag">smart components</span></div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🧩</div>
+ <h3>UI Layer <span class="file-badge purple">components/</span></h3>
+ <p>Dumb, reusable pieces. Get data via props. Know nothing about API or routing.</p>
+ <div class="code-block"><span class="c-purple">components/ui/</span> → Button, Input, Modal
+<span class="c-purple">components/layout/</span> → Header, Footer, Sidebar
+<span class="c-purple">components/forms/</span> → LoginForm, SignupForm
+
+<span class="c-muted">// Rule: if it uses useNavigate
+// or calls an API, it's a page, not a component</span></div>
+ <div class="tags"><span class="tag">props only</span><span class="tag">most reusable</span></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <!-- TAB: FILE GUIDE -->
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <div class="view" id="view-files">
+ <p class="section-label">// Every File, Every Purpose</p>
+
+ <div class="grid-2">
+ <div class="card green">
+ <div class="card-icon green">📄</div>
+ <h3>index.html <span class="file-badge green">root</span></h3>
+ <p>The actual HTML shell. Vite's entry point. Not a template — the real thing.</p>
+ <div class="code-block"><span class="c-muted">&lt;!-- Change these when: --&gt;</span>
+<span class="c-green">title</span> → app name in browser tab
+<span class="c-green">meta description</span>→ SEO description
+<span class="c-green">og:image</span> → social share preview
+<span class="c-green">lang="en"</span> → accessibility/i18n
+<span class="c-green">&lt;link&gt; fonts</span> → Google Fonts
+<span class="c-green">&lt;script&gt;</span> → analytics, chat widgets
+<span class="c-green">&lt;div id="root"&gt;</span> → React mounts here</div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🚀</div>
+ <h3>main.jsx <span class="file-badge purple">boot</span></h3>
+ <p>App boots here. All global providers wrap your app at this level.</p>
+ <div class="code-block"><span class="c-muted">// Add providers when you need:</span>
+<span class="c-purple">BrowserRouter</span> → routing anywhere in app
+<span class="c-purple">Provider store</span> → Redux global state
+<span class="c-purple">AuthContext</span> → auth everywhere
+<span class="c-purple">ThemeProvider</span> → dark/light mode
+<span class="c-purple">QueryClient</span> → React Query cache
+<span class="c-purple">ErrorBoundary</span> → catch crashes
+<span class="c-purple">globals.css</span> → imported here once</div>
+ </div>
+
+ <div class="card yellow">
+ <div class="card-icon yellow">🗺️</div>
+ <h3>App.jsx <span class="file-badge yellow">router</span></h3>
+ <p>Route definitions only. Where you add new pages and protect routes.</p>
+ <div class="code-block"><span class="c-muted">// Change when:</span>
+<span class="c-yellow">new page added</span> → new &lt;Route&gt;
+<span class="c-yellow">auth guard</span> → PrivateRoute wrapper
+<span class="c-yellow">new layout</span> → nested Route with Layout
+<span class="c-yellow">404 page</span> → path="*" route
+<span class="c-yellow">redirect</span> → &lt;Navigate to="/" /&gt;
+<span class="c-yellow">lazy loading</span> → React.lazy() imports</div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">📁</div>
+ <h3>pages/ <span class="file-badge teal">views</span></h3>
+ <p>Route-level views. Each page is a folder with its own files co-located.</p>
+ <div class="code-block">pages/
+ Dashboard/
+ <span class="c-teal">index.jsx</span> → main component
+ <span class="c-teal">Dashboard.module.css</span> → scoped styles
+ <span class="c-teal">Dashboard.test.jsx</span> → tests live here
+ <span class="c-teal">useDashboard.js</span> → page-specific hook
+
+<span class="c-muted">// Pages USE hooks, compose components
+// Pages NEVER have raw fetch() calls</span></div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">🧩</div>
+ <h3>components/ <span class="file-badge red">ui</span></h3>
+ <p>Reusable UI. Split into ui/ (generic) and layout/ (structural).</p>
+ <div class="code-block">components/
+ ui/
+ <span class="c-red">Button/</span> → &lt;Button variant="primary"&gt;
+ <span class="c-red">Modal/</span> → &lt;Modal isOpen={...}&gt;
+ <span class="c-red">Input/</span> → &lt;Input label="Email"&gt;
+ <span class="c-red">Spinner/</span> → loading states
+ layout/
+ <span class="c-red">Header/</span> → nav + logo
+ <span class="c-red">Sidebar/</span> → side navigation
+ <span class="c-red">Footer/</span> → footer links</div>
+ </div>
+
+ <div class="card green">
+ <div class="card-icon green">🔌</div>
+ <h3>services/ <span class="file-badge green">api</span></h3>
+ <p>All external communication lives here. Pure JS, no React, no JSX.</p>
+ <div class="code-block">services/
+ <span class="c-green">api.js</span> → axios instance + interceptors
+ <span class="c-green">authService.js</span> → login, logout, refresh token
+ <span class="c-green">userService.js</span> → getUser, updateUser, deleteUser
+ <span class="c-green">uploadService.js</span> → file uploads to S3
+
+<span class="c-muted">// Uses: import.meta.env.VITE_API_URL
+// Never call fetch() in components</span></div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🎣</div>
+ <h3>hooks/ <span class="file-badge purple">logic</span></h3>
+ <p>Custom hooks encapsulate stateful logic. Always start with "use".</p>
+ <div class="code-block">hooks/
+ <span class="c-purple">useAuth.js</span> → auth state, login(), logout()
+ <span class="c-purple">useFetch.js</span> → generic { data, loading, error }
+ <span class="c-purple">useDebounce.js</span> → debounce search inputs
+ <span class="c-purple">useLocalStorage.js</span> → persist state to localStorage
+ <span class="c-purple">useWindowSize.js</span> → responsive breakpoints
+ <span class="c-purple">usePermissions.js</span> → role-based access checks</div>
+ </div>
+
+ <div class="card yellow">
+ <div class="card-icon yellow">🌐</div>
+ <h3>context/ <span class="file-badge yellow">state</span></h3>
+ <p>React Context for global state that doesn't need Redux (theme, auth, locale).</p>
+ <div class="code-block">context/
+ <span class="c-yellow">AuthContext.jsx</span> → user, isLoggedIn, login()
+ <span class="c-yellow">ThemeContext.jsx</span> → theme, toggleTheme()
+ <span class="c-yellow">ToastContext.jsx</span> → showToast(), hideToast()
+ <span class="c-yellow">LocaleContext.jsx</span> → language, setLanguage()
+
+<span class="c-muted">// Use Context for: auth, theme, locale, toasts
+// Use Redux/Zustand for: complex app state, caching</span></div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">🗃️</div>
+ <h3>store/ <span class="file-badge teal">redux/zustand</span></h3>
+ <p>Global state management. Use when Context causes re-render performance issues.</p>
+ <div class="code-block">store/
+ <span class="c-teal">index.js</span> → configureStore
+ slices/
+ <span class="c-teal">authSlice.js</span> → auth state + reducers
+ <span class="c-teal">cartSlice.js</span> → shopping cart
+ <span class="c-teal">uiSlice.js</span> → modals, sidebars open/close
+ <span class="c-teal">selectors.js</span> → memoized selectors</div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">🛠️</div>
+ <h3>utils/ <span class="file-badge red">helpers</span></h3>
+ <p>Pure functions only. No React, no API calls, no side effects.</p>
+ <div class="code-block">utils/
+ <span class="c-red">formatDate.js</span> → formatDate(date, 'MM/DD/YYYY')
+ <span class="c-red">validators.js</span> → isValidEmail(), isValidPhone()
+ <span class="c-red">currency.js</span> → formatCurrency(1000, 'USD')
+ <span class="c-red">storage.js</span> → getItem, setItem wrappers
+ <span class="c-red">classNames.js</span> → conditionally join class strings
+
+<span class="c-muted">// Rule: if it takes input → returns output
+// with zero side effects, it's a util</span></div>
+ </div>
+
+ <div class="card green">
+ <div class="card-icon green">📌</div>
+ <h3>constants/ <span class="file-badge green">fixed values</span></h3>
+ <p>App-wide fixed values. Change here → updates everywhere.</p>
+ <div class="code-block">constants/
+ <span class="c-green">routes.js</span> → export const ROUTES = {
+ HOME: '/',
+ DASHBOARD: '/dashboard'
+ }
+ <span class="c-green">api.js</span> → API_ENDPOINTS, TIMEOUT_MS
+ <span class="c-green">roles.js</span> → USER_ROLES = { ADMIN, USER, GUEST }
+ <span class="c-green">config.js</span> → MAX_FILE_SIZE, ITEMS_PER_PAGE</div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🎨</div>
+ <h3>styles/ <span class="file-badge purple">css</span></h3>
+ <p>Global styles only. Component styles live co-located with their component.</p>
+ <div class="code-block">styles/
+ <span class="c-purple">globals.css</span> → reset, body, root variables
+ <span class="c-purple">variables.css</span> → --primary-color, --font-size-lg
+ <span class="c-purple">themes.css</span> → [data-theme="dark"] overrides
+ <span class="c-purple">animations.css</span>→ @keyframes reused across app
+
+<span class="c-muted">// Component-specific CSS:
+// Button/Button.module.css (co-located)</span></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <!-- TAB: .ENV GUIDE -->
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <div class="view" id="view-env">
+ <p class="section-label">// .env File Priority Chain</p>
+
+ <div class="card purple" style="margin-bottom:16px">
+ <div class="code-block" style="font-size:12px; line-height:2">
+<span class="c-muted">// HIGHEST PRIORITY LOWEST</span>
+<span class="c-red">.env.development.local</span> → <span class="c-yellow">.env.development</span> → <span class="c-teal">.env.local</span> → <span class="c-green">.env</span>
+
+<span class="c-muted">npm run dev →</span> loads: <span class="c-green">.env</span> + <span class="c-teal">.env.local</span> + <span class="c-yellow">.env.development</span> + <span class="c-red">.env.development.local</span>
+<span class="c-muted">npm run build →</span> loads: <span class="c-green">.env</span> + <span class="c-teal">.env.local</span> + <span class="c-yellow">.env.production</span> + <span class="c-red">.env.production.local</span>
+<span class="c-muted">--mode staging →</span> loads: <span class="c-green">.env</span> + <span class="c-teal">.env.local</span> + <span class="c-yellow">.env.staging</span> + <span class="c-red">.env.staging.local</span></div>
+ </div>
+
+ <div class="grid-2">
+ <div class="card green">
+ <div class="card-icon green">📗</div>
+ <h3>.env <span class="file-badge green">commit this</span></h3>
+ <p>Base defaults. Safe values that work for everyone on the team.</p>
+ <div class="code-block"><span class="c-green">VITE_APP_NAME</span>=MyApp
+<span class="c-green">VITE_APP_VERSION</span>=1.0.0
+<span class="c-green">VITE_SUPPORT_EMAIL</span>=support@myapp.com
+<span class="c-green">VITE_ITEMS_PER_PAGE</span>=20
+<span class="c-green">VITE_MAX_UPLOAD_MB</span>=5
+
+<span class="c-muted"># These are safe to commit
+# No secrets, no URLs that vary</span></div>
+ </div>
+
+ <div class="card yellow">
+ <div class="card-icon yellow">📒</div>
+ <h3>.env.local <span class="file-badge yellow">never commit</span></h3>
+ <p>Your personal overrides. Each developer has their own copy.</p>
+ <div class="code-block"><span class="c-yellow">VITE_API_URL</span>=http://localhost:8080
+<span class="c-yellow">VITE_STRIPE_KEY</span>=pk_test_yourpersonalkey
+<span class="c-yellow">VITE_FIREBASE_PROJECT</span>=myapp-dev-yourname
+
+<span class="c-muted"># This file is in .gitignore
+# Never appears in git history
+# Everyone has different values here</span></div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">🔵</div>
+ <h3>.env.development <span class="file-badge teal">commit this</span></h3>
+ <p>Team-wide dev defaults. Shared dev configuration everyone uses.</p>
+ <div class="code-block"><span class="c-teal">VITE_API_URL</span>=http://localhost:3001
+<span class="c-teal">VITE_LOG_LEVEL</span>=debug
+<span class="c-teal">VITE_ENABLE_ANALYTICS</span>=false
+<span class="c-teal">VITE_SHOW_DEV_TOOLS</span>=true
+<span class="c-teal">VITE_SENTRY_ENABLED</span>=false
+<span class="c-teal">VITE_AUTH_PROVIDER</span>=local</div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">🔴</div>
+ <h3>.env.production <span class="file-badge red">careful</span></h3>
+ <p>Production config. Keys here should be restricted (not secret) or set via CI/CD.</p>
+ <div class="code-block"><span class="c-red">VITE_API_URL</span>=https://api.myapp.com
+<span class="c-red">VITE_LOG_LEVEL</span>=error
+<span class="c-red">VITE_ENABLE_ANALYTICS</span>=true
+<span class="c-red">VITE_SHOW_DEV_TOOLS</span>=false
+<span class="c-red">VITE_SENTRY_ENABLED</span>=true
+<span class="c-red">VITE_AUTH_PROVIDER</span>=auth0
+
+<span class="c-muted"># Real API keys → set in CI/CD env vars
+# not in this file</span></div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🟣</div>
+ <h3>.env.staging <span class="file-badge purple">custom mode</span></h3>
+ <p>Custom staging environment. Run with: vite build --mode staging</p>
+ <div class="code-block"><span class="c-purple">VITE_API_URL</span>=https://staging-api.myapp.com
+<span class="c-purple">VITE_APP_NAME</span>=MyApp (Staging)
+<span class="c-purple">VITE_ENABLE_ANALYTICS</span>=false
+<span class="c-purple">VITE_LOG_LEVEL</span>=warn
+
+<span class="c-muted"># package.json:
+# "build:staging": "vite build --mode staging"</span></div>
+ </div>
+
+ <div class="card green">
+ <div class="card-icon green">📖</div>
+ <h3>.env.example <span class="file-badge green">commit this</span></h3>
+ <p>Documentation file. Shows teammates what variables they need to set up.</p>
+ <div class="code-block"><span class="c-muted"># Copy to .env.local and fill in your values</span>
+<span class="c-green">VITE_API_URL</span>= <span class="c-muted"># your local backend</span>
+<span class="c-green">VITE_STRIPE_PUBLIC_KEY</span>= <span class="c-muted"># get from Stripe dashboard</span>
+<span class="c-green">VITE_FIREBASE_API_KEY</span>= <span class="c-muted"># Firebase console</span>
+<span class="c-green">VITE_GOOGLE_MAPS_KEY</span>= <span class="c-muted"># Google Cloud console</span></div>
+ </div>
+ </div>
+
+ <p class="section-label">// What's Safe to Put in VITE_ Variables</p>
+ <div class="grid-2">
+ <div class="card teal">
+ <div class="card-icon teal">✅</div>
+ <h3>Safe — put in VITE_</h3>
+ <p>These are designed to be public or are URLs, not secrets.</p>
+ <div class="code-block"><span class="c-teal">VITE_STRIPE_PUBLIC_KEY</span>=pk_live_... <span class="c-muted">✅ public by design</span>
+<span class="c-teal">VITE_GOOGLE_MAPS_KEY</span>=AIza... <span class="c-muted">✅ restrict in console</span>
+<span class="c-teal">VITE_FIREBASE_API_KEY</span>=... <span class="c-muted">✅ Firebase rules protect</span>
+<span class="c-teal">VITE_API_URL</span>=https://api.myapp.com <span class="c-muted">✅ just a URL</span>
+<span class="c-teal">VITE_APP_NAME</span>=MyApp <span class="c-muted">✅ not sensitive</span>
+<span class="c-teal">VITE_AUTH0_CLIENT_ID</span>=abc123 <span class="c-muted">✅ public Auth0 ID</span></div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">❌</div>
+ <h3>Never — keep without VITE_</h3>
+ <p>These would be visible to anyone who opens browser DevTools.</p>
+ <div class="code-block"><span class="c-red">VITE_DATABASE_URL</span>=postgres://... <span class="c-red">❌ server only</span>
+<span class="c-red">VITE_JWT_SECRET</span>=mysecret <span class="c-red">❌ signing secret</span>
+<span class="c-red">VITE_AWS_SECRET_KEY</span>=abc123 <span class="c-red">❌ full access key</span>
+<span class="c-red">VITE_STRIPE_SECRET</span>=sk_live_... <span class="c-red">❌ server-side only</span>
+<span class="c-red">VITE_SENDGRID_API_KEY</span>=SG.xxx <span class="c-red">❌ email server key</span>
+
+<span class="c-muted"># These should go in your BACKEND .env
+# Never in your React frontend</span></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <!-- TAB: VITE CONFIG -->
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <div class="view" id="view-vite">
+ <p class="section-label">// vite.config.js — Every Section Explained</p>
+
+ <div class="grid-2">
+ <div class="card purple">
+ <div class="card-icon purple">🔌</div>
+ <h3>plugins <span class="file-badge purple">required</span></h3>
+ <p>Extend Vite's capabilities. Add here when you need new file support.</p>
+ <div class="code-block"><span class="c-purple">plugins:</span> [
+ <span class="c-green">react()</span>, <span class="c-muted">// JSX + Fast Refresh</span>
+ <span class="c-green">svgr()</span>, <span class="c-muted">// import Logo from './logo.svg'</span>
+ <span class="c-green">viteImagemin()</span>, <span class="c-muted">// compress images</span>
+ <span class="c-green">VitePWA()</span>, <span class="c-muted">// make app installable</span>
+ <span class="c-green">eslintPlugin()</span>, <span class="c-muted">// lint on save</span>
+]
+
+<span class="c-muted">// Change when: new file type, PWA, bundle analysis</span></div>
+ </div>
+
+ <div class="card green">
+ <div class="card-icon green">📁</div>
+ <h3>resolve.alias <span class="file-badge green">must have</span></h3>
+ <p>Clean imports. Set once, use everywhere. Saves hours of fixing relative paths.</p>
+ <div class="code-block"><span class="c-green">resolve:</span> {
+ alias: {
+ <span class="c-yellow">'@'</span>: path.resolve('./src'),
+ <span class="c-yellow">'@comp'</span>: path.resolve('./src/components'),
+ <span class="c-yellow">'@hooks'</span>: path.resolve('./src/hooks'),
+ <span class="c-yellow">'@utils'</span>: path.resolve('./src/utils'),
+ }
+}
+
+<span class="c-muted">// Before: '../../../../utils/format'
+// After: '@utils/format'</span></div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">🖥️</div>
+ <h3>server <span class="file-badge teal">dev only</span></h3>
+ <p>Dev server settings. The proxy is critical to avoid CORS errors locally.</p>
+ <div class="code-block"><span class="c-teal">server:</span> {
+ port: 3000,
+ open: true,
+ proxy: {
+ <span class="c-yellow">'/api'</span>: {
+ target: <span class="c-green">'http://localhost:8080'</span>,
+ changeOrigin: true,
+ <span class="c-muted">// /api/users → localhost:8080/api/users</span>
+ },
+ <span class="c-yellow">'/auth'</span>: {
+ target: <span class="c-green">'http://localhost:8080'</span>,
+ }
+ }
+}</div>
+ </div>
+
+ <div class="card yellow">
+ <div class="card-icon yellow">📦</div>
+ <h3>build <span class="file-badge yellow">production</span></h3>
+ <p>Controls your production bundle. Critical for performance and caching.</p>
+ <div class="code-block"><span class="c-yellow">build:</span> {
+ outDir: <span class="c-green">'dist'</span>,
+ sourcemap: true,
+ rollupOptions: {
+ output: {
+ manualChunks: {
+ <span class="c-muted">// separate vendor cache</span>
+ <span class="c-green">vendor</span>: ['react', 'react-dom'],
+ <span class="c-green">router</span>: ['react-router-dom'],
+ <span class="c-green">ui</span>: ['@radix-ui/react-dialog'],
+ }
+ }
+ }
+}</div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">🎨</div>
+ <h3>css <span class="file-badge red">styling</span></h3>
+ <p>CSS Modules configuration and preprocessor setup.</p>
+ <div class="code-block"><span class="c-red">css:</span> {
+ modules: {
+ localsConvention: <span class="c-green">'camelCase'</span>
+ <span class="c-muted">// styles.myClass instead of styles['my-class']</span>
+ },
+ preprocessorOptions: {
+ scss: {
+ additionalData: <span class="c-green">`@import "./src/styles/vars";`</span>
+ <span class="c-muted">// vars available in every .scss file</span>
+ }
+ }
+}</div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🔍</div>
+ <h3>Using .env in config <span class="file-badge purple">advanced</span></h3>
+ <p>Access env vars inside vite.config.js itself using loadEnv.</p>
+ <div class="code-block"><span class="c-purple">import</span> { defineConfig, loadEnv } <span class="c-purple">from</span> 'vite'
+
+<span class="c-purple">export default</span> defineConfig(({ <span class="c-yellow">mode</span> }) => {
+ <span class="c-muted">// import.meta.env doesn't exist in config</span>
+ <span class="c-muted">// use loadEnv instead:</span>
+ const env = loadEnv(mode, process.cwd(), '')
+
+ return {
+ server: {
+ proxy: { '/api': { target: <span class="c-green">env.VITE_API_URL</span> } }
+ }
+ }
+})</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <!-- TAB: CHANGE SCENARIOS -->
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <div class="view" id="view-scenarios">
+ <p class="section-label">// When Your App Changes — Know Exactly Which Files to Touch</p>
+
+ <div class="legend">
+ <div class="legend-item"><div class="legend-dot" style="background:var(--accent1)"></div>config files</div>
+ <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>app structure</div>
+ <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div>data/services</div>
+ <div class="legend-item"><div class="legend-dot" style="background:var(--accent4)"></div>env/secrets</div>
+ <div class="legend-item"><div class="legend-dot" style="background:var(--accent5)"></div>UI/components</div>
+ </div>
+
+ <div class="scenario-grid">
+
+ <!-- SCENARIO 1 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(0,255,148,0.1);color:var(--accent1)">01</div>
+ <div>
+ <div class="scenario-title">Adding a New Page / Route</div>
+ <div class="scenario-subtitle">e.g., /settings, /reports, /admin</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent2)">App.jsx<span>add Route definition</span></div>
+ <div class="change-file" style="border-color:var(--accent5)">pages/Settings/index.jsx<span>create new page</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">constants/routes.js<span>add SETTINGS: '/settings'</span></div>
+ <div class="change-file" style="border-color:var(--accent5)">components/layout/Header<span>add nav link</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Create</strong> pages/Settings/index.jsx with your page component</div>
+ <div class="step"><strong>Add route</strong> in App.jsx: &lt;Route path="/settings" element={&lt;Settings /&gt;} /&gt;</div>
+ <div class="step"><strong>Add constant</strong> in constants/routes.js: SETTINGS: '/settings'</div>
+ <div class="step"><strong>Add nav link</strong> in Header component using the constant</div>
+ <div class="step"><strong>If protected</strong> wrap with &lt;PrivateRoute&gt; in App.jsx</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 2 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(124,92,252,0.1);color:var(--accent2)">02</div>
+ <div>
+ <div class="scenario-title">Connecting to a New Backend API</div>
+ <div class="scenario-subtitle">new endpoints, different base URL, 3rd party service</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent4)">.env.development<span>VITE_NEW_API_URL</span></div>
+ <div class="change-file" style="border-color:var(--accent4)">.env.production<span>VITE_NEW_API_URL</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">vite.config.js<span>add proxy rule</span></div>
+ <div class="change-file" style="border-color:var(--accent3)">services/newService.js<span>create service file</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Add URL</strong> to .env.development and .env.production with VITE_ prefix</div>
+ <div class="step"><strong>Add proxy</strong> in vite.config.js server.proxy (dev only, avoids CORS)</div>
+ <div class="step"><strong>Create</strong> services/newService.js using import.meta.env.VITE_NEW_API_URL</div>
+ <div class="step"><strong>Create hook</strong> in hooks/useNewData.js that calls the service</div>
+ <div class="step"><strong>Use hook</strong> in your page/component</div>
+ <div class="step"><strong>Add .env.example</strong> entry so teammates know the new variable</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 3 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(255,107,107,0.1);color:var(--accent3)">03</div>
+ <div>
+ <div class="scenario-title">Adding Authentication</div>
+ <div class="scenario-subtitle">login/logout, protected routes, token management</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent4)">.env files<span>VITE_AUTH0_* or similar</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">main.jsx<span>wrap AuthProvider</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">App.jsx<span>add PrivateRoute</span></div>
+ <div class="change-file" style="border-color:var(--accent3)">services/authService.js<span>create</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">context/AuthContext.jsx<span>create</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">hooks/useAuth.js<span>create</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Add env vars</strong>: VITE_AUTH_DOMAIN, VITE_AUTH_CLIENT_ID to all .env files</div>
+ <div class="step"><strong>Create</strong> services/authService.js (login, logout, refreshToken, getMe)</div>
+ <div class="step"><strong>Create</strong> context/AuthContext.jsx (user state, auth methods)</div>
+ <div class="step"><strong>Create</strong> hooks/useAuth.js (convenience wrapper for context)</div>
+ <div class="step"><strong>Wrap</strong> app in main.jsx with &lt;AuthProvider&gt;</div>
+ <div class="step"><strong>Create</strong> components/PrivateRoute.jsx that checks auth</div>
+ <div class="step"><strong>Wrap protected routes</strong> in App.jsx with &lt;PrivateRoute&gt;</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 4 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(255,217,61,0.1);color:var(--accent4)">04</div>
+ <div>
+ <div class="scenario-title">Adding Global State (Redux / Zustand)</div>
+ <div class="scenario-subtitle">cart, user preferences, complex shared state</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent2)">main.jsx<span>wrap Provider store</span></div>
+ <div class="change-file" style="border-color:var(--accent3)">store/index.js<span>create store</span></div>
+ <div class="change-file" style="border-color:var(--accent3)">store/slices/cartSlice.js<span>create slice</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">package.json<span>add @reduxjs/toolkit</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Install</strong>: npm install @reduxjs/toolkit react-redux</div>
+ <div class="step"><strong>Create</strong> store/index.js with configureStore</div>
+ <div class="step"><strong>Create slices</strong> in store/slices/ for each domain (cart, ui, user)</div>
+ <div class="step"><strong>Wrap</strong> app in main.jsx with &lt;Provider store={store}&gt;</div>
+ <div class="step"><strong>Use</strong> useSelector and useDispatch in components/hooks</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 5 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(78,205,196,0.1);color:var(--accent5)">05</div>
+ <div>
+ <div class="scenario-title">Adding a New Environment (Staging)</div>
+ <div class="scenario-subtitle">dev → staging → production pipeline</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent4)">.env.staging<span>create new file</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">package.json<span>add build:staging script</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">vite.config.js<span>if mode-specific config needed</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Create</strong> .env.staging with staging-specific values</div>
+ <div class="step"><strong>Add script</strong> to package.json: "build:staging": "vite build --mode staging"</div>
+ <div class="step"><strong>Update CI/CD</strong> pipeline to run npm run build:staging for staging deploys</div>
+ <div class="step"><strong>Test locally</strong>: npm run build:staging && npm run preview</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 6 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(0,255,148,0.1);color:var(--accent1)">06</div>
+ <div>
+ <div class="scenario-title">Migrating to TypeScript</div>
+ <div class="scenario-subtitle">adding type safety to existing JS project</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent1)">package.json<span>add typescript dep</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">tsconfig.json<span>create new</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">vite-env.d.ts<span>type VITE_ vars</span></div>
+ <div class="change-file" style="border-color:var(--accent3)">*.jsx → *.tsx<span>rename files</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Install</strong>: npm install -D typescript @types/react @types/react-dom</div>
+ <div class="step"><strong>Create</strong> tsconfig.json at root</div>
+ <div class="step"><strong>Update</strong> src/vite-env.d.ts to type all your VITE_ env variables</div>
+ <div class="step"><strong>Rename</strong> files .jsx → .tsx, .js → .ts gradually</div>
+ <div class="step"><strong>Vite auto-detects</strong> TypeScript — no vite.config change needed</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 7 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(124,92,252,0.1);color:var(--accent2)">07</div>
+ <div>
+ <div class="scenario-title">Performance Optimization / Code Splitting</div>
+ <div class="scenario-subtitle">large bundle size, slow initial load</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent1)">vite.config.js<span>manualChunks</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">App.jsx<span>React.lazy() routes</span></div>
+ <div class="change-file" style="border-color:var(--accent5)">heavy components<span>dynamic import()</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Analyze bundle</strong>: npm install -D rollup-plugin-visualizer, check sizes</div>
+ <div class="step"><strong>Add manualChunks</strong> in vite.config.js build.rollupOptions to split vendor libs</div>
+ <div class="step"><strong>Lazy load routes</strong> in App.jsx: const Settings = React.lazy(() => import('./pages/Settings'))</div>
+ <div class="step"><strong>Wrap lazy routes</strong> in &lt;Suspense fallback={&lt;Spinner/&gt;}&gt;</div>
+ <div class="step"><strong>Dynamic import</strong> heavy components only when needed</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 8 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(255,107,107,0.1);color:var(--accent3)">08</div>
+ <div>
+ <div class="scenario-title">Adding i18n / Internationalization</div>
+ <div class="scenario-subtitle">multiple languages, RTL support, locale switching</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent4)">.env<span>VITE_DEFAULT_LOCALE</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">main.jsx<span>wrap I18nProvider</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">context/LocaleContext.jsx<span>create</span></div>
+ <div class="change-file" style="border-color:var(--accent5)">public/locales/<span>en.json, fr.json</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">index.html<span>update lang attr</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Install</strong>: npm install i18next react-i18next</div>
+ <div class="step"><strong>Create</strong> public/locales/en/translation.json (and other langs)</div>
+ <div class="step"><strong>Create</strong> src/i18n.js config file</div>
+ <div class="step"><strong>Wrap</strong> main.jsx with I18nextProvider</div>
+ <div class="step"><strong>Update</strong> index.html lang attribute dynamically</div>
+ <div class="step"><strong>Replace</strong> hardcoded strings with t('key') in all components</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 9 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(255,217,61,0.1);color:var(--accent4)">09</div>
+ <div>
+ <div class="scenario-title">Deploying to a Subdirectory / CDN</div>
+ <div class="scenario-subtitle">myapp.com/app instead of myapp.com</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent1)">vite.config.js<span>set base: '/app/'</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">main.jsx<span>BrowserRouter basename</span></div>
+ <div class="change-file" style="border-color:var(--accent4)">.env.production<span>VITE_BASE_URL</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Set base</strong> in vite.config.js: base: '/app/' (or env var)</div>
+ <div class="step"><strong>Update</strong> BrowserRouter in main.jsx: basename="/app"</div>
+ <div class="step"><strong>All asset paths</strong> auto-update — Vite handles this</div>
+ <div class="step"><strong>Update</strong> .env.production VITE_BASE_URL if you reference it manually</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- SCENARIO 10 -->
+ <div class="scenario" onclick="toggleScenario(this)">
+ <div class="scenario-header">
+ <div class="scenario-num" style="background:rgba(78,205,196,0.1);color:var(--accent5)">10</div>
+ <div>
+ <div class="scenario-title">Adding Error Tracking (Sentry)</div>
+ <div class="scenario-subtitle">production error monitoring and alerting</div>
+ </div>
+ <div class="scenario-arrow">▼</div>
+ </div>
+ <div class="scenario-body">
+ <div class="change-files">
+ <div class="change-file" style="border-color:var(--accent4)">.env.production<span>VITE_SENTRY_DSN</span></div>
+ <div class="change-file" style="border-color:var(--accent4)">.env.development<span>VITE_SENTRY_ENABLED=false</span></div>
+ <div class="change-file" style="border-color:var(--accent2)">main.jsx<span>Sentry.init()</span></div>
+ <div class="change-file" style="border-color:var(--accent1)">vite.config.js<span>sourcemap: true</span></div>
+ </div>
+ <div class="step-list">
+ <div class="step"><strong>Install</strong>: npm install @sentry/react</div>
+ <div class="step"><strong>Add</strong> VITE_SENTRY_DSN to .env.production, VITE_SENTRY_ENABLED=false to .env.development</div>
+ <div class="step"><strong>Enable sourcemaps</strong> in vite.config.js: build.sourcemap: true</div>
+ <div class="step"><strong>Initialize</strong> Sentry in main.jsx before ReactDOM.createRoot, gated by env var</div>
+ <div class="step"><strong>Wrap</strong> App with Sentry.ErrorBoundary for automatic error capture</div>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>
+
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <!-- TAB: CHANGE CHECKLIST -->
+ <!-- ═══════════════════════════════════════════════════════ -->
+ <div class="view" id="view-checklist">
+ <p class="section-label">// Quick Reference — What to Change When</p>
+
+ <div class="grid-2">
+
+ <div class="card green">
+ <div class="card-icon green">🔀</div>
+ <h3>New Feature / Page</h3>
+ <div class="code-block"><span class="c-green">ALWAYS touch:</span>
+ pages/FeatureName/index.jsx ← create
+ App.jsx ← add route
+ constants/routes.js ← add path constant
+
+<span class="c-yellow">MAYBE touch:</span>
+ components/layout/Header ← nav link
+ store/slices/featureSlice.js ← if needs state
+ services/featureService.js ← if needs API
+ hooks/useFeature.js ← if needs logic</div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">🌐</div>
+ <h3>API Change</h3>
+ <div class="code-block"><span class="c-purple">ALWAYS touch:</span>
+ services/[name]Service.js ← endpoint change
+ hooks/use[Name].js ← if response shape changed
+
+<span class="c-yellow">MAYBE touch:</span>
+ .env.development ← new URL
+ .env.production ← new URL
+ .env.example ← document new var
+ vite.config.js ← new proxy rule
+ constants/api.js ← new endpoint string</div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">🎨</div>
+ <h3>UI Redesign</h3>
+ <div class="code-block"><span class="c-teal">ALWAYS touch:</span>
+ components/ui/[component] ← changed component
+ *.module.css ← scoped styles
+
+<span class="c-yellow">MAYBE touch:</span>
+ styles/globals.css ← global changes
+ styles/variables.css ← new design tokens
+ index.html ← new font import
+ vite.config.js ← new font plugin</div>
+ </div>
+
+ <div class="card yellow">
+ <div class="card-icon yellow">🔐</div>
+ <h3>Auth Change</h3>
+ <div class="code-block"><span class="c-yellow">ALWAYS touch:</span>
+ services/authService.js ← auth logic
+ context/AuthContext.jsx ← auth state
+ hooks/useAuth.js ← hook update
+
+<span class="c-yellow">MAYBE touch:</span>
+ .env files ← new auth keys
+ main.jsx ← new provider
+ App.jsx ← route protection
+ components/PrivateRoute.jsx ← guard logic</div>
+ </div>
+
+ <div class="card red">
+ <div class="card-icon red">⚡</div>
+ <h3>Performance Issue</h3>
+ <div class="code-block"><span class="c-red">ALWAYS touch:</span>
+ vite.config.js ← manualChunks
+ App.jsx ← React.lazy routes
+
+<span class="c-yellow">MAYBE touch:</span>
+ heavy components ← dynamic import()
+ images → public/ ← move large assets
+ hooks/useFetch.js ← add caching
+ store/ ← memoize selectors</div>
+ </div>
+
+ <div class="card green">
+ <div class="card-icon green">🚀</div>
+ <h3>New Deployment Target</h3>
+ <div class="code-block"><span class="c-green">ALWAYS touch:</span>
+ .env.[mode] ← create env file
+ package.json ← add build script
+
+<span class="c-yellow">MAYBE touch:</span>
+ vite.config.js ← base path, output
+ .gitignore ← new env files
+ CI/CD config ← new pipeline step
+ .env.example ← document new vars</div>
+ </div>
+
+ <div class="card purple">
+ <div class="card-icon purple">📦</div>
+ <h3>New npm Package</h3>
+ <div class="code-block"><span class="c-purple">ALWAYS touch:</span>
+ package.json ← auto (npm install)
+ package-lock.json ← auto (npm install)
+
+<span class="c-yellow">MAYBE touch:</span>
+ vite.config.js ← if plugin needed
+ main.jsx ← if provider needed
+ constants/ ← if config values
+ .env files ← if API keys needed
+ vite-env.d.ts ← TypeScript types</div>
+ </div>
+
+ <div class="card teal">
+ <div class="card-icon teal">🌍</div>
+ <h3>Environment Variables</h3>
+ <div class="code-block"><span class="c-teal">ADDING a new var:</span>
+ .env.development ← dev value
+ .env.production ← prod value
+ .env.example ← document it
+ vite-env.d.ts ← TypeScript type
+
+<span class="c-yellow">ROTATING/changing a key:</span>
+ .env.local ← your local copy
+ CI/CD environment vars ← production secrets
+ Never in committed .env files for real secrets</div>
+ </div>
+
+ </div>
+
+ <p class="section-label">// The 3 Questions to Ask Before Any Change</p>
+ <div class="card purple" style="font-family:'JetBrains Mono',monospace; font-size:13px; line-height:2.2">
+ <div class="code-block" style="font-size:13px; line-height:2.5">
+<span class="c-green">1. Does this change affect how the app boots?</span>
+ Yes → touch main.jsx, possibly vite.config.js
+
+<span class="c-purple">2. Does this change affect where data comes from?</span>
+ Yes → touch services/, hooks/, .env files
+
+<span class="c-yellow">3. Does this change affect what the user sees?</span>
+ New screen → touch pages/, App.jsx, constants/routes.js
+ Same screen → touch components/, *.module.css, styles/</div>
+ </div>
+
+ </div>
+
+</div>
+
+<script>
+ function switchTab(name) {
+ document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+ document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+ document.getElementById('view-' + name).classList.add('active');
+ event.target.classList.add('active');
+ }
+
+ function toggleScenario(el) {
+ el.classList.toggle('open');
+ }
+
+ // Open first scenario by default
+ document.querySelector('.scenario').classList.add('open');
+</script>
+</body>
+</html>
